@@ -5,7 +5,9 @@
 #define WM_ONCLOSE				WM_USER+4
 #define AUTO_CONNECT_DELAY		100
 
-#define PACKET_MAX_NUM		256
+#define PACKET_MAX_NUM				256
+#define PACKET_CHAR_STX					0x02
+#define PACKET_CHAR_ETX					0x03
 
 class CClientSock : public CAsyncSocket
 {

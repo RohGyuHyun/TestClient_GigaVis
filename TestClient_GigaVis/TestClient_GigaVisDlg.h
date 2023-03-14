@@ -21,7 +21,10 @@ protected:
 	CClientSock* m_Client;
 	BOOL m_bClientConnect;
 	Mat m_Image;
-	CStaticMatDisplay *m_Display;
+	CStaticMatDisplay m_Display;
+	queue<Mat> m_RcvImage;
+
+	int m_nTestIdx;
 private:
 
 

@@ -59,6 +59,7 @@ CTestClientGigaVisDlg::CTestClientGigaVisDlg(CWnd* pParent /*=nullptr*/)
 void CTestClientGigaVisDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_STATIC_DISP, m_Display);
 }
 
 BEGIN_MESSAGE_MAP(CTestClientGigaVisDlg, CDialogEx)
@@ -116,16 +117,10 @@ BOOL CTestClientGigaVisDlg::OnInitDialog()
 		m_Client->SetWnd(this->m_hWnd);
 	}
 
-	m_Display = new CStaticMatDisplay();
-
-
-	CString strText, strRslt;
-	strText.Format(_T("0x011544,2064,3,00000000000000000000000"));
-
-	AfxExtractSubString(strRslt, strText, 1, ',');
-
+	m_nTestIdx = 0;
 
 	SetTimer(100, 100, NULL);
+	SetTimer(101, 1000, NULL);
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -185,7 +180,7 @@ HCURSOR CTestClientGigaVisDlg::OnQueryDragIcon()
 void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
-
+	CStringA strText;
 	switch ((int)nIDEvent)
 	{
 	case 100:
@@ -194,7 +189,15 @@ void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 			m_Client->Connect(_T("127.0.0.1"), 5000);
 		}
 		break;
-
+	case 101:
+		if (m_RcvImage.size() > 0)
+		{
+			m_Display.Fit();
+			m_Display.SetImage(m_RcvImage.front());
+			Sleep(1000);
+			m_RcvImage.pop();
+		}
+		break;
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
@@ -224,14 +227,38 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 		if(m_Image.rows != 0 || m_Image.cols != 0)
 			m_Image.release();
 
-		m_Image.create(nHeight, nWidth, nBpp);
+		m_Image.create(nHeight, nWidth, CV_8UC3);
 	}
+	BYTE byRcvData[3];
+	memcpy(m_Image.data, &byData[13], nImageSize);
+	byRcvData[0] = byData[13];
+	byRcvData[1] = byData[14];
+	byRcvData[2] = byData[15];
 
-	memcpy(m_Image.data, &byData[12], nImageSize);
+	//m_RcvImage.push(m_Image);
+	m_Display.Fit();
+	m_Display.SetImage(m_Image);
 
-	m_Display->SetImage(m_Image);
+	delete[] byData;
 
-	delete byData;
+
+	byData = new BYTE[512];
+
+	int nIdx = 0;
+	byData[nIdx++] = PACKET_CHAR_STX;
+	byData[nIdx++] = 'R';
+	byData[nIdx++] = 'C';
+	byData[nIdx++] = 'V';
+	byData[nIdx++] = ',';
+	byData[nIdx++] = byRcvData[0];
+	byData[nIdx++] = byRcvData[1];
+	byData[nIdx++] = byRcvData[2];
+	byData[nIdx++] = PACKET_CHAR_ETX;
+
+	m_Client->Send(byData, nIdx);
+
+	delete[] byData;
+
 
 	return 0;
 }
@@ -273,10 +300,6 @@ LRESULT CTestClientGigaVisDlg::OnClose(WPARAM wParam, LPARAM lParam)
 BOOL CTestClientGigaVisDlg::DestroyWindow()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
-	if (m_Display != NULL)
-	{
-		delete m_Display;
-		m_Display = NULL;
-	}
+
 	return CDialogEx::DestroyWindow();
 }

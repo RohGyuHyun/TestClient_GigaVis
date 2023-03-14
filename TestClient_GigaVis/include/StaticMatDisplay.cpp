@@ -198,6 +198,7 @@ BOOL CStaticMatDisplay::SetImage(Mat img)
 	if (img.rows == 0 || img.cols == 0)
 		return FALSE;
 
+	
 	img.copyTo(m_Image);
 	if (m_Image.channels() == 1)
 	{
@@ -205,7 +206,7 @@ BOOL CStaticMatDisplay::SetImage(Mat img)
 	}
 	else if( m_Image.channels() == 3 )
 	{
-		cv::cvtColor( m_Image, m_Image, COLOR_BGR2BGRA )	;	//	단순히 보여주는 용이므로 4Byte Align을 맞추기 위하여 BGR가 아닌 BGRA로 함
+		//cv::cvtColor( m_Image, m_Image, COLOR_BGR2RGB)	;	//	단순히 보여주는 용이므로 4Byte Align을 맞추기 위하여 BGR가 아닌 BGRA로 함
 	}
 	CalcAndDisplayImage();
 }
