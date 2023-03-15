@@ -25,9 +25,6 @@ protected:
 	vector<Mat> m_RcvImage;
 
 
-	CWinThread* m_pDisplayThread;
-	UINT static ThreadDisplay(LPVOID pParam);
-	BOOL m_bThreadEnd;
 	int m_nDisplayIdx;
 	int m_nTestIdx;
 	BYTE* m_byRcvFullBuff;
@@ -41,9 +38,9 @@ private:
 
 
 public:
-	void DisplayThread();
 
-	protected:
+
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 지원입니다.
 
 

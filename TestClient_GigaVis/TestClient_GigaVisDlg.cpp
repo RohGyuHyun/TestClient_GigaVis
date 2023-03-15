@@ -130,10 +130,6 @@ BOOL CTestClientGigaVisDlg::OnInitDialog()
 	//SetTimer(101, 1000, NULL);
 	m_nDisplayIdx = 0;
 
-	m_bThreadEnd = FALSE;
-	m_pDisplayThread = AfxBeginThread(ThreadDisplay, this, THREAD_PRIORITY_NORMAL);
-	m_pDisplayThread->m_bAutoDelete = TRUE;
-
 	m_byRcvFullBuff = new BYTE[10000000];
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -188,40 +184,6 @@ HCURSOR CTestClientGigaVisDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-UINT CTestClientGigaVisDlg::ThreadDisplay(LPVOID pParam)
-{
-	CTestClientGigaVisDlg* pdlg = (CTestClientGigaVisDlg*)pParam;
-	pdlg->DisplayThread();
-
-	return 0;
-}
-
-void CTestClientGigaVisDlg::DisplayThread()
-{
-	while (TRUE)
-	{
-		if (m_RcvImage.size() > 0)
-		{
-			
-			if (m_nDisplayIdx < m_RcvImage.size() && m_RcvImage[m_nDisplayIdx++].cols != 0 && m_RcvImage[m_nDisplayIdx++].rows != 0)
-				m_Display.SetImage(m_RcvImage[m_nDisplayIdx]);
-
-			Sleep(1000);
-			//m_RcvImage.pop();
-
-			if (m_nDisplayIdx > m_RcvImage.size())
-				m_nDisplayIdx = 0;
-
-		}
-
-
-		if (m_bThreadEnd)
-			break;
-
-		Sleep(1);
-	}
-}
-
 void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 {
 	// TODO: 여기에 메시지 처리기 코드를 추가 및/또는 기본값을 호출합니다.
@@ -232,14 +194,6 @@ void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 		if (!m_bClientConnect)
 		{
 			m_Client->Connect(_T("127.0.0.1"), 5000);
-		}
-		break;
-	case 101:
-		if (m_RcvImage.size() > 0)
-		{
-			m_Display.SetImage(m_RcvImage.front());
-			Sleep(1000);
-			//m_RcvImage.pop();
 		}
 		break;
 	}
@@ -276,8 +230,6 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 		AfxExtractSubString(strRslt, strText, 3, ',');
 		m_nRcvFullBuffLen = _wtoi(strRslt);
 
-		//m_nImageDataIdx = 
-
 		int nIdx = 0, nTempIdx = 0;
 		for (int i = 0; i < 4; i++)
 		{
@@ -312,7 +264,6 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 			byRcvData[1] = byData[m_nImageDataIdx + 1];
 			byRcvData[2] = byData[m_nImageDataIdx + 2];
 
-			//m_RcvImage.push_back(m_Image);
 			m_Display.Fit();
 			m_Display.SetImage(m_Image);
 			m_Display.UpdateDisplay();
@@ -352,7 +303,6 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 			byRcvData[4] = m_byRcvFullBuff[m_nImageDataIdx + 4];
 			byRcvData[5] = m_byRcvFullBuff[m_nImageDataIdx + 5];
 
-			//m_RcvImage.push_back(m_Image);
 			m_Display.Fit();
 			m_Display.SetImage(m_Image);
 			m_Display.UpdateDisplay();
@@ -376,8 +326,6 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 			byData[nIdx++] = PACKET_CHAR_ETX;
 
 			m_Client->Send(byData, nIdx);
-
-			
 		}
 		else
 		{
@@ -426,7 +374,6 @@ LRESULT CTestClientGigaVisDlg::OnClose(WPARAM wParam, LPARAM lParam)
 BOOL CTestClientGigaVisDlg::DestroyWindow()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
-	m_bThreadEnd = TRUE;
 	delete[] m_byRcvFullBuff;
 
 	return CDialogEx::DestroyWindow();
