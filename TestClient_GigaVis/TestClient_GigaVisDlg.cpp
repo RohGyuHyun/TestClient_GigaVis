@@ -53,6 +53,11 @@ END_MESSAGE_MAP()
 CTestClientGigaVisDlg::CTestClientGigaVisDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_TESTCLIENT_GIGAVIS_DIALOG, pParent)
 {
+	m_byRcvFullBuff = NULL;
+	m_nRcvFullBuffIdx = 0;;
+	m_nRcvFullBuffLen = 0;;
+	m_bRcvFullBuff = FALSE;;
+	m_nRcvImgSize = 0;
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
 
@@ -118,10 +123,18 @@ BOOL CTestClientGigaVisDlg::OnInitDialog()
 	}
 
 	m_nTestIdx = 0;
-
+	m_Image.create(1544, 2064, CV_8UC3);
+	m_Display.SetImage(m_Image);
+	m_Display.Fit();
 	SetTimer(100, 100, NULL);
-	SetTimer(101, 1000, NULL);
+	//SetTimer(101, 1000, NULL);
+	m_nDisplayIdx = 0;
 
+	m_bThreadEnd = FALSE;
+	m_pDisplayThread = AfxBeginThread(ThreadDisplay, this, THREAD_PRIORITY_NORMAL);
+	m_pDisplayThread->m_bAutoDelete = TRUE;
+
+	m_byRcvFullBuff = new BYTE[10000000];
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -175,7 +188,39 @@ HCURSOR CTestClientGigaVisDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+UINT CTestClientGigaVisDlg::ThreadDisplay(LPVOID pParam)
+{
+	CTestClientGigaVisDlg* pdlg = (CTestClientGigaVisDlg*)pParam;
+	pdlg->DisplayThread();
 
+	return 0;
+}
+
+void CTestClientGigaVisDlg::DisplayThread()
+{
+	while (TRUE)
+	{
+		if (m_RcvImage.size() > 0)
+		{
+			
+			if (m_nDisplayIdx < m_RcvImage.size() && m_RcvImage[m_nDisplayIdx++].cols != 0 && m_RcvImage[m_nDisplayIdx++].rows != 0)
+				m_Display.SetImage(m_RcvImage[m_nDisplayIdx]);
+
+			Sleep(1000);
+			//m_RcvImage.pop();
+
+			if (m_nDisplayIdx > m_RcvImage.size())
+				m_nDisplayIdx = 0;
+
+		}
+
+
+		if (m_bThreadEnd)
+			break;
+
+		Sleep(1);
+	}
+}
 
 void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 {
@@ -192,10 +237,9 @@ void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 	case 101:
 		if (m_RcvImage.size() > 0)
 		{
-			m_Display.Fit();
 			m_Display.SetImage(m_RcvImage.front());
 			Sleep(1000);
-			m_RcvImage.pop();
+			//m_RcvImage.pop();
 		}
 		break;
 	}
@@ -205,61 +249,143 @@ void CTestClientGigaVisDlg::OnTimer(UINT_PTR nIDEvent)
 
 LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 {
-	BYTE* byData;
-	int nMaxLen = 1544 * 2064 * 3 * 2;
-	byData = new BYTE[nMaxLen];
-
-	m_Client->Receive(byData, nMaxLen);
-
 	CString strText, strTemp, strRslt;
+	BYTE* byData;
+	int nMaxLen = 10000000;
+	byData = new BYTE[10000000];
+
+	int nRcvLen = m_Client->Receive(byData, 10000000);
+
 	strTemp.Format(_T("%S"), byData);
-	strText.Format(_T("%s"), strTemp.Mid(1, strTemp.GetLength()));
-	
-	AfxExtractSubString(strRslt, strText, 0, ',');
-	int nHeight = _wtoi(strRslt);
-	AfxExtractSubString(strRslt, strText, 1, ',');
-	int nWidth = _wtoi(strRslt);
-	AfxExtractSubString(strRslt, strText, 2, ',');
-	int nBpp = _wtoi(strRslt);
-	int nImageSize = nHeight * nWidth * nBpp;
-	if (m_Image.rows != nHeight || m_Image.cols != nWidth || m_Image.channels() != nBpp)
+	if (byData[nRcvLen - 1] == PACKET_CHAR_ETX)
 	{
-		if(m_Image.rows != 0 || m_Image.cols != 0)
-			m_Image.release();
-
-		m_Image.create(nHeight, nWidth, CV_8UC3);
+		m_bRcvFullBuff = TRUE;
 	}
-	BYTE byRcvData[3];
-	memcpy(m_Image.data, &byData[13], nImageSize);
-	byRcvData[0] = byData[13];
-	byRcvData[1] = byData[14];
-	byRcvData[2] = byData[15];
+	
+	if (byData[0] == PACKET_CHAR_STX)
+	{
+		strTemp.Format(_T("%S"), byData);
+		strText.Format(_T("%s"), strTemp.Mid(1, strTemp.GetLength()));
 
-	//m_RcvImage.push(m_Image);
-	m_Display.Fit();
-	m_Display.SetImage(m_Image);
+		AfxExtractSubString(strRslt, strText, 0, ',');
+		int nHeight = _wtoi(strRslt);
+		AfxExtractSubString(strRslt, strText, 1, ',');
+		int nWidth = _wtoi(strRslt);
+		AfxExtractSubString(strRslt, strText, 2, ',');
+		int nBpp = _wtoi(strRslt);
+		AfxExtractSubString(strRslt, strText, 3, ',');
+		m_nRcvFullBuffLen = _wtoi(strRslt);
+
+		//m_nImageDataIdx = 
+
+		int nIdx = 0, nTempIdx = 0;
+		for (int i = 0; i < 4; i++)
+		{
+			nIdx = strText.Find(',', nIdx+1);
+		}
+
+		m_nImageDataIdx = nIdx + 2;
+		m_nRcvImgSize = nHeight * nWidth * nBpp;
+		if (m_Image.rows != nHeight || m_Image.cols != nWidth || m_Image.channels() != nBpp)
+		{
+			if (m_Image.rows != 0 || m_Image.cols != 0)
+				m_Image.release();
+
+			m_Image.create(nHeight, nWidth, CV_8UC3);
+		}
+		
+		memset(m_byRcvFullBuff, NULL, 10000000);
+		if (m_nRcvFullBuffLen != nRcvLen)
+		{
+			m_nRcvFullBuffIdx = nRcvLen;
+			m_bRcvFullBuff = TRUE;
+			memcpy(m_byRcvFullBuff, byData, sizeof(BYTE) * m_nRcvFullBuffIdx);
+		}
+		else
+		{
+			m_bRcvFullBuff = FALSE;
+			memcpy(&m_byRcvFullBuff[m_nRcvFullBuffIdx], byData, sizeof(BYTE) * nRcvLen);
+			m_nRcvFullBuffIdx = 0;
+			BYTE byRcvData[3];
+			memcpy(m_Image.data, &byData[m_nImageDataIdx], m_nRcvImgSize);
+			byRcvData[0] = byData[m_nImageDataIdx];
+			byRcvData[1] = byData[m_nImageDataIdx + 1];
+			byRcvData[2] = byData[m_nImageDataIdx + 2];
+
+			//m_RcvImage.push_back(m_Image);
+			m_Display.Fit();
+			m_Display.SetImage(m_Image);
+			m_Display.UpdateDisplay();
+			delete[] byData;
+
+			byData = new BYTE[512];
+
+			int nIdx = 0;
+			byData[nIdx++] = PACKET_CHAR_STX;
+			byData[nIdx++] = 'R';
+			byData[nIdx++] = 'C';
+			byData[nIdx++] = 'V';
+			byData[nIdx++] = ',';
+			byData[nIdx++] = byRcvData[0];
+			byData[nIdx++] = byRcvData[1];
+			byData[nIdx++] = byRcvData[2];
+			byData[nIdx++] = PACKET_CHAR_ETX;
+
+			m_Client->Send(byData, nIdx);
+
+		}
+		
+	}
+	else
+	{
+		if (m_nRcvFullBuffLen == (m_nRcvFullBuffIdx + nRcvLen))
+		{
+			m_bRcvFullBuff = FALSE;
+			memcpy(&m_byRcvFullBuff[m_nRcvFullBuffIdx], byData, sizeof(BYTE) * nRcvLen);
+			m_nRcvFullBuffIdx = 0;
+			BYTE byRcvData[6];
+			memcpy(m_Image.data, &m_byRcvFullBuff[m_nImageDataIdx], m_nRcvImgSize);
+			byRcvData[0] = m_byRcvFullBuff[m_nImageDataIdx];
+			byRcvData[1] = m_byRcvFullBuff[m_nImageDataIdx + 1];
+			byRcvData[2] = m_byRcvFullBuff[m_nImageDataIdx + 2];
+			byRcvData[3] = m_byRcvFullBuff[m_nImageDataIdx + 3];
+			byRcvData[4] = m_byRcvFullBuff[m_nImageDataIdx + 4];
+			byRcvData[5] = m_byRcvFullBuff[m_nImageDataIdx + 5];
+
+			//m_RcvImage.push_back(m_Image);
+			m_Display.Fit();
+			m_Display.SetImage(m_Image);
+			m_Display.UpdateDisplay();
+			delete[] byData;
+
+
+			byData = new BYTE[512];
+
+			int nIdx = 0;
+			byData[nIdx++] = PACKET_CHAR_STX;
+			byData[nIdx++] = 'R';
+			byData[nIdx++] = 'C';
+			byData[nIdx++] = 'V';
+			byData[nIdx++] = ',';
+			byData[nIdx++] = byRcvData[0];
+			byData[nIdx++] = byRcvData[1];
+			byData[nIdx++] = byRcvData[2];
+			byData[nIdx++] = byRcvData[3];
+			byData[nIdx++] = byRcvData[4];
+			byData[nIdx++] = byRcvData[5];
+			byData[nIdx++] = PACKET_CHAR_ETX;
+
+			m_Client->Send(byData, nIdx);
+
+			
+		}
+		else
+		{
+
+		}
+	}
 
 	delete[] byData;
-
-
-	byData = new BYTE[512];
-
-	int nIdx = 0;
-	byData[nIdx++] = PACKET_CHAR_STX;
-	byData[nIdx++] = 'R';
-	byData[nIdx++] = 'C';
-	byData[nIdx++] = 'V';
-	byData[nIdx++] = ',';
-	byData[nIdx++] = byRcvData[0];
-	byData[nIdx++] = byRcvData[1];
-	byData[nIdx++] = byRcvData[2];
-	byData[nIdx++] = PACKET_CHAR_ETX;
-
-	m_Client->Send(byData, nIdx);
-
-	delete[] byData;
-
-
 	return 0;
 }
 
@@ -300,6 +426,8 @@ LRESULT CTestClientGigaVisDlg::OnClose(WPARAM wParam, LPARAM lParam)
 BOOL CTestClientGigaVisDlg::DestroyWindow()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
+	m_bThreadEnd = TRUE;
+	delete[] m_byRcvFullBuff;
 
 	return CDialogEx::DestroyWindow();
 }

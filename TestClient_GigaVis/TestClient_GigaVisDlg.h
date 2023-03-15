@@ -22,15 +22,26 @@ protected:
 	BOOL m_bClientConnect;
 	Mat m_Image;
 	CStaticMatDisplay m_Display;
-	queue<Mat> m_RcvImage;
+	vector<Mat> m_RcvImage;
 
+
+	CWinThread* m_pDisplayThread;
+	UINT static ThreadDisplay(LPVOID pParam);
+	BOOL m_bThreadEnd;
+	int m_nDisplayIdx;
 	int m_nTestIdx;
+	BYTE* m_byRcvFullBuff;
+	int m_nRcvFullBuffIdx;
+	int m_nRcvFullBuffLen;
+	BOOL m_bRcvFullBuff;
+	int m_nRcvImgSize;
+	int m_nImageDataIdx;
 private:
 
 
 
 public:
-
+	void DisplayThread();
 
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 지원입니다.

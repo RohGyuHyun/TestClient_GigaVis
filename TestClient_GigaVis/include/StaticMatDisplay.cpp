@@ -209,51 +209,9 @@ BOOL CStaticMatDisplay::SetImage(Mat img)
 		//cv::cvtColor( m_Image, m_Image, COLOR_BGR2RGB)	;	//	단순히 보여주는 용이므로 4Byte Align을 맞추기 위하여 BGR가 아닌 BGRA로 함
 	}
 	CalcAndDisplayImage();
+
+	return TRUE;
 }
-//
-//BOOL	CStaticMatDisplay::SetImage( IplImage* pImage )
-//{
-//	if( pImage == NULL )
-//		return	FALSE	;
-//
-//	if (m_lpImage)		cvReleaseImage(&m_lpImage);
-//	m_lpImage = NULL;
-//	
-//	m_lpImage = cvCreateImage(cvSize(pImage->width, pImage->height), IPL_DEPTH_8U, 1);
-//
-//	if(pImage->nChannels == 3)
-//	{
-//		cvCvtColor(pImage, m_lpImage, CV_BGR2GRAY);
-//	}
-//	else
-//	{
-//		cvCopy(pImage, m_lpImage);
-//	}
-//
-//	CRect		rt	;
-//	GetClientRect( &rt )	;
-//	m_WinRect = rt;
-//	m_lZoomEndX = pImage->width;
-//	m_lZoomStartX = 0;
-//	m_lZoomEndY = pImage->height;
-//	m_lZoomStartX = 0;
-//
-//	m_Image.release()				;
-//	m_Image	=	cvarrToMat(pImage )	;
-//	/*
-//	if( m_Image.channels() == 1 )
-//	{
-//		cv::cvtColor( m_Image, m_Image, COLOR_GRAY2BGRA )	;	//	단순히 보여주는 용이므로 4Byte Align을 맞추기 위하여 BGR가 아닌 BGRA로 함
-//	}
-//	else if( m_Image.channels() == 3 )
-//	{
-//		cv::cvtColor( m_Image, m_Image, COLOR_BGR2BGRA )	;	//	단순히 보여주는 용이므로 4Byte Align을 맞추기 위하여 BGR가 아닌 BGRA로 함
-//	}
-//*/
-//	CalcAndDisplayImage()		;
-//
-//	return	TRUE	;
-//}
 
 VOID	CStaticMatDisplay::ZoomIn()
 {
