@@ -122,7 +122,7 @@ BOOL CTestClientGigaVisDlg::OnInitDialog()
 		m_Client->SetWnd(this->m_hWnd);
 	}
 
-	m_Image.create(1544, 2064, CV_8UC3);
+	m_Image.create(100, 200, CV_8UC3);
 	m_Display.SetImage(m_Image);
 	m_Display.Fit();
 	SetTimer(100, 100, NULL);
@@ -227,23 +227,30 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 		AfxExtractSubString(strRslt, strText, 2, ',');
 		int nBpp = _wtoi(strRslt);
 		AfxExtractSubString(strRslt, strText, 3, ',');
+		int nDepth = _wtoi(strRslt);
+		AfxExtractSubString(strRslt, strText, 4, ',');
 		m_nRcvFullBuffLen = _wtoi(strRslt);
 
 		int nIdx = 0, nTempIdx = 0;
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < 5; i++)
 		{
-			nIdx = strText.Find(',', nIdx+1);
+			nIdx = strText.Find(',', nIdx + 1);
 		}
 
 		m_nImageDataIdx = nIdx + 2;
 		m_nRcvImgSize = nHeight * nWidth * nBpp;
-		if (m_Image.rows != nHeight || m_Image.cols != nWidth || m_Image.channels() != nBpp)
+		m_Image.release();
+		m_Image.create(nHeight, nWidth, CV_MAKETYPE(nDepth, nBpp));
+		/*if (m_Image.rows != nHeight || m_Image.cols != nWidth || m_Image.channels() != nBpp)
 		{
 			if (m_Image.rows != 0 || m_Image.cols != 0)
 				m_Image.release();
 
-			m_Image.create(nHeight, nWidth, CV_8UC3);
-		}
+			if(nBpp == 3)
+				m_Image.create(nHeight, nWidth, CV_8UC3);
+			else
+				m_Image.create(nHeight, nWidth, CV_8UC1);
+		}*/
 		
 		memset(m_byRcvFullBuff, NULL, 10000000);
 		//처음 Recive Data 길이 확인 후 전체 데이터가 왔는지 확인
