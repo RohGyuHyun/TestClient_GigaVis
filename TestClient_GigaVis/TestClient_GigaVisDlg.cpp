@@ -122,7 +122,6 @@ BOOL CTestClientGigaVisDlg::OnInitDialog()
 		m_Client->SetWnd(this->m_hWnd);
 	}
 
-	m_nTestIdx = 0;
 	m_Image.create(1544, 2064, CV_8UC3);
 	m_Display.SetImage(m_Image);
 	m_Display.Fit();
@@ -247,14 +246,17 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 		}
 		
 		memset(m_byRcvFullBuff, NULL, 10000000);
+		//처음 Recive Data 길이 확인 후 전체 데이터가 왔는지 확인
 		if (m_nRcvFullBuffLen != nRcvLen)
 		{
+			//전체 데이터가 전부 안왔을경우 Full BUff에 copy 만 진행
 			m_nRcvFullBuffIdx = nRcvLen;
 			m_bRcvFullBuff = TRUE;
 			memcpy(m_byRcvFullBuff, byData, sizeof(BYTE) * m_nRcvFullBuffIdx);
 		}
 		else
 		{
+			//전체 데이터가 전부 왔을 경우 Image Data Copy 후 Display 및 Server Ack 전송
 			m_bRcvFullBuff = FALSE;
 			memcpy(&m_byRcvFullBuff[m_nRcvFullBuffIdx], byData, sizeof(BYTE) * nRcvLen);
 			m_nRcvFullBuffIdx = 0;
@@ -282,7 +284,7 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 			byData[nIdx++] = byRcvData[2];
 			byData[nIdx++] = PACKET_CHAR_ETX;
 
-			m_Client->Send(byData, nIdx);
+			m_Client->Send(byData, nIdx);//Send Server Ack
 
 		}
 		
@@ -291,6 +293,7 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 	{
 		if (m_nRcvFullBuffLen == (m_nRcvFullBuffIdx + nRcvLen))
 		{
+			//전체 데이터가 전부 왔을 경우 Image Data Copy 후 Display 및 Server Ack 전송
 			m_bRcvFullBuff = FALSE;
 			memcpy(&m_byRcvFullBuff[m_nRcvFullBuffIdx], byData, sizeof(BYTE) * nRcvLen);
 			m_nRcvFullBuffIdx = 0;
@@ -325,11 +328,25 @@ LRESULT CTestClientGigaVisDlg::OnReceive(WPARAM wParam, LPARAM lParam)
 			byData[nIdx++] = byRcvData[5];
 			byData[nIdx++] = PACKET_CHAR_ETX;
 
-			m_Client->Send(byData, nIdx);
+			m_Client->Send(byData, nIdx);//Send Server Ack
 		}
-		else
+		else if (m_nRcvFullBuffLen > (m_nRcvFullBuffIdx + nRcvLen))
 		{
+			//전체 데이터가 전부 안왔을경우 Full BUff에 copy 만 진행
+			m_nRcvFullBuffIdx = m_nRcvFullBuffIdx + nRcvLen;
+			m_bRcvFullBuff = TRUE;
+			memcpy(&m_byRcvFullBuff[m_nRcvFullBuffIdx], byData, sizeof(BYTE) * nRcvLen);
+		}
+		else if (m_nRcvFullBuffLen < (m_nRcvFullBuffIdx + nRcvLen))
+		{
+			int nIdx = 0;
+			byData[nIdx++] = PACKET_CHAR_STX;
+			byData[nIdx++] = 'E';
+			byData[nIdx++] = 'R';
+			byData[nIdx++] = 'R';
+			byData[nIdx++] = PACKET_CHAR_ETX;
 
+			m_Client->Send(byData, nIdx);//Send Server Ack
 		}
 	}
 
@@ -375,6 +392,7 @@ BOOL CTestClientGigaVisDlg::DestroyWindow()
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
 	delete[] m_byRcvFullBuff;
+	KillTimer(100);
 
 	return CDialogEx::DestroyWindow();
 }

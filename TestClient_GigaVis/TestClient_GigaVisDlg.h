@@ -22,17 +22,14 @@ protected:
 	BOOL m_bClientConnect;
 	Mat m_Image;
 	CStaticMatDisplay m_Display;
-	vector<Mat> m_RcvImage;
-
 
 	int m_nDisplayIdx;
-	int m_nTestIdx;
-	BYTE* m_byRcvFullBuff;
-	int m_nRcvFullBuffIdx;
-	int m_nRcvFullBuffLen;
-	BOOL m_bRcvFullBuff;
-	int m_nRcvImgSize;
-	int m_nImageDataIdx;
+	BYTE* m_byRcvFullBuff;//Recive Full Data;
+	int m_nRcvFullBuffIdx;//First Recive Data Len
+	int m_nRcvFullBuffLen;//Recive Full Data Len
+	BOOL m_bRcvFullBuff;//Recive Full Data Flag
+	int m_nRcvImgSize;//Recive Image Data Size
+	int m_nImageDataIdx;//Recive Data Start Image Data Index
 private:
 
 
